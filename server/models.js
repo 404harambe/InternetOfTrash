@@ -2,15 +2,22 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const BinSchema = new Schema({
-    _id: Schema.Types.ObjectId,
     type: {
         type: String,
         enum: [ 'plastic', 'paper', 'organic', 'glass', 'generic' ],
-        default: 'generic'
+        default: 'generic',
+        required: true
     },
-    address: String
+    address: { type: String, required: true }
+});
+
+const MeasurementSchema = new Schema({
+    timestamp: { type: Date, required: true },
+    binId: { type: Schema.Types.ObjectId, ref: 'Bin' },
+    value: { type: Number, required: true }
 });
 
 module.exports = {
-    Bin: mongoose.model('Bin', BinSchema)
+    Bin: mongoose.model('Bin', BinSchema),
+    Measurement: mongoose.model('Measurement', MeasurementSchema)
 };
