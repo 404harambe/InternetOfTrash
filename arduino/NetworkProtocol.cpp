@@ -45,10 +45,11 @@ NetworkProtocol::NetworkProtocol(addr_t myself, unsigned int rxPin, unsigned int
     : _myself(myself)
 {   
     // Configure the RCSwitches for both tx and rx
-    _rx.enableReceive(digitalPinToInterrupt(rxPin));
+    _rx.enableReceive(rxPin);
     _rx.setProtocol(0);
     _tx.enableTransmit(txPin);
     _tx.setProtocol(0);
+    _tx.setRepeatTransmit(1);
 }
 
 bool NetworkProtocol::Send(addr_t dest, const unsigned char* data, uint16_t len) {
@@ -93,18 +94,12 @@ bool NetworkProtocol::Send(addr_t dest, const unsigned char* data, uint16_t len)
     return true;
 }
 
-bool NetworkProtocol::Receive(Message** out) {
+NetworkProtocol::Message* NetworkProtocol::Receive() {
 
-    bool outcome = false;
-
-    Message* completed = FindCompletedMessage();
-    if (completed != NULL) {
-        *out = completed;
-        outcome = true;
-    }
+    Message* out = FindCompletedMessage();
 
     if (!_rx.available()) {
-        return outcome;
+        return out;
     }
 
     // Unpack the received packet
@@ -117,18 +112,14 @@ bool NetworkProtocol::Receive(Message** out) {
 
     // Discard the packet if it's not for us
     if (dest != _myself) {
-        return outcome;
+        return out;
     }
 
     // Process the incoming packet
-    if (!outcome && ProcessIncomingPacket(type, src, data)) {
-        Message* completed = FindCompletedMessage();
-        if (completed != NULL) {
-            *out = completed;
-        }
-        return completed != NULL;
+    if (ProcessIncomingPacket(type, src, data) && out == NULL) {
+        return FindCompletedMessage();
     } else {
-        return outcome;
+        return out;
     }
 }
 

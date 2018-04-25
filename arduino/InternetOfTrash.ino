@@ -1,7 +1,7 @@
 #include "config.h"
 #include "NetworkProtocol.h"
 
-NetworkProtocol protocol(SERIAL_ID, PIN_RECEIVER, PIN_TRANSMITTER);
+NetworkProtocol protocol(SERIAL_ID, digitalPinToInterrupt(PIN_RECEIVER), PIN_TRANSMITTER);
 
 void setup() {
   Serial.begin(9600);
@@ -10,8 +10,8 @@ void setup() {
 void loop() {
 
   // Check if new data is available for us
-  NetworkProtocol::Message* msg = NULL;
-  if (protocol.Receive(&msg)) {
+  NetworkProtocol::Message* msg = protocol.Receive();
+  if (msg != NULL) {
     Serial.print("Data received: ");
     Serial.print((const char*) msg->Contents());
     Serial.print(" from #");

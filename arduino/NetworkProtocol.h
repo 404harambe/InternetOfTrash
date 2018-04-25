@@ -78,7 +78,7 @@
 #define NETWORK_PROTOCOL_TIMEOUT 1000
 #endif
 
-#include <RCSwitch.h>
+#include "RCSwitch.h"
 
 /** Addresses are 7 bit identifiers. */
 typedef unsigned char addr_t;
@@ -146,11 +146,11 @@ public:
     /**
      * Checks if a new packet for this node is available.
      * This method does not block, and returns a proper message only if new data is available.
-     * If it returns `false`, the value of `*out` is left untouched.
+     * If no message is available, `NULL` is returned.
      *
      * It can receive at most `NETWORK_PROTOCOL_MAX_MESSAGE_LENGTH` bytes.
      */
-    bool Receive(Message** out);
+    Message* Receive();
 
     
 private:

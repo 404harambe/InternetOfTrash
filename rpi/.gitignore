@@ -1,0 +1,3 @@
+out/
+src/*.py
+src/*_wrap.cpp
