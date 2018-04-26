@@ -1,44 +1,43 @@
 #include "NetworkProtocol.h"
-#include "crc16.h"
 
-
-#define htons(x) ( ((x)<< 8 & 0xFF00) | \
-                   ((x)>> 8 & 0x00FF) )
-#define ntohs(x) htons(x)
-
-
-/** Checks if the address is not valid. */
-static inline bool CheckAddress(addr_t addr) {
-    return addr <= 127;
+#ifdef NETWORK_PROTOCOL_DEBUG
+static void log(const char* message) {
+    Serial.print("[NETWORK_PROTOCOL] ");
+    Serial.print(message);
+    Serial.print("\n");
 }
 
-/** Helper function to build a packet. */
-static inline uint32_t BuildPacket(NetworkProtocol::PacketType type, addr_t src, addr_t dest, uint16_t data) {
-
-    // Unless this is a Data packet, the payload will always be a little endian integer
-    if (type != NetworkProtocol::PacketType::Data) {
-        data = htons(data);
+static void log(const char* message, NetworkProtocol::Packet& packet) {
+    Serial.print("[NETWORK_PROTOCOL] ");
+    Serial.print(message);
+    Serial.print(" { ");
+    switch (packet.type) {
+        case NetworkProtocol::PacketType::Handshake:
+            Serial.print("<Handshake>");
+            break;
+        case NetworkProtocol::PacketType::Data:
+            Serial.print("<Data>");
+            break;
+        case NetworkProtocol::PacketType::Ack:
+            Serial.print("<Ack>");
+            break;
+        default:
+            Serial.print("<Unknown>");
+            break;
     }
-    
-    return (((uint32_t) type) << 30)
-         | (((uint32_t) (src & 127)) << 23)
-         | (((uint32_t) (dest & 127)) << 16)
-         | ((uint32_t) data);
+    Serial.print(", Source = ");
+    Serial.print(packet.src);
+    Serial.print(", Destination = ");
+    Serial.print(packet.dest);
+    Serial.print(", Seqno = ");
+    Serial.print(packet.seqno);
+    Serial.print(", Data = ");
+    Serial.print(packet.data);
+    Serial.print(" }\n");
 }
-
-/** Destructures a packet into its components. */
-static inline void UnpackPacket(uint32_t packet, NetworkProtocol::PacketType* type, addr_t* src, addr_t* dest, uint16_t* data) {
-    *type = (NetworkProtocol::PacketType) (packet >> 30);
-    *src = (packet >> 23) & 127;
-    *dest = (packet >> 16) & 127;
-    *data = packet & 0x0000ffff;
-
-    // Unless this is a Data packet, the payload will always be a little endian integer
-    if (*type != NetworkProtocol::PacketType::Data) {
-        *data = ntohs(*data);
-    }
-}
-
+#else
+#define log(...)
+#endif
 
 
 NetworkProtocol::NetworkProtocol(addr_t myself, unsigned int rxPin, unsigned int txPin)
@@ -49,46 +48,36 @@ NetworkProtocol::NetworkProtocol(addr_t myself, unsigned int rxPin, unsigned int
     _rx.setProtocol(0);
     _tx.enableTransmit(txPin);
     _tx.setProtocol(0);
-    _tx.setRepeatTransmit(1);
+    _tx.setRepeatTransmit(10);
 }
 
-bool NetworkProtocol::Send(addr_t dest, const unsigned char* data, uint16_t len) {
+bool NetworkProtocol::Send(addr_t dest, const unsigned char* data, uint32_t len) {
 
     // Check parameters
-    if (!CheckAddress(dest)) {
-        return false;
-    }
     if (len > NETWORK_PROTOCOL_MAX_MESSAGE_LENGTH) {
         return false;
     }
 
-    uint16_t expected_ack = 0;
+    Packet packet;
+    packet.src = _myself;
+    packet.dest = dest;
+    packet.type = PacketType::Handshake;
+    packet.seqno = 0;
+    packet.data = len;
 
     // Send the handshake first
-    if (!TransmitAndWait(PacketType::Handshake, dest, len, &expected_ack)) {
+    if (!TransmitAndWait(packet)) {
         return false;
     }
 
-    // Then send the data a pair of bytes at a time
-    unsigned int i = 0;
-    while (true) {
-        uint16_t chunk;
-        if (len - i == 1) {
-            chunk = ((uint16_t) data[i]) << 8;
-        } else {
-            chunk = ((uint16_t*) data)[i];
-        }
-
-        if (!TransmitAndWait(PacketType::Data, dest, chunk, &expected_ack)) {
+    // Then send the data
+    packet.type = PacketType::Data;
+    for (unsigned int i = 0; i < len; i += 4) {
+        packet.data = 0;
+        memcpy(&packet.data, data + i, MIN(len - i, 4));
+        if (!TransmitAndWait(packet)) {
             return false;
         }
-        
-        i += 2;
-    }
-
-    // In the end, send the crc16 as termination
-    if (!TransmitAndWait(PacketType::Termination, dest, crc16(data, len), &expected_ack)) {
-        return false;
     }
 
     return true;
@@ -103,74 +92,90 @@ NetworkProtocol::Message* NetworkProtocol::Receive() {
     }
 
     // Unpack the received packet
-    PacketType type;
-    addr_t src;
-    addr_t dest;
-    uint16_t data;
-    UnpackPacket(_rx.getReceivedValue(), &type, &src, &dest, &data);
+    uint64_t rcvRaw = _rx.getReceivedValue();
     _rx.resetAvailable();
+    Packet rcv;
+    if (!Packet::Parse(rcvRaw, rcv)) {
+        return out;
+    }
 
     // Discard the packet if it's not for us
-    if (dest != _myself) {
+    if (rcv.dest != _myself) {
         return out;
     }
 
     // Process the incoming packet
-    if (ProcessIncomingPacket(type, src, data) && out == NULL) {
+    if (ProcessIncomingPacket(rcv) && out == NULL) {
         return FindCompletedMessage();
     } else {
         return out;
     }
 }
 
-bool NetworkProtocol::TransmitAndWait(PacketType type, addr_t dest, uint16_t data, uint16_t* expected_ack) {
+bool NetworkProtocol::TransmitAndWait(Packet& p) {
 
-    // Build and transmit the packet
-    uint32_t packet = BuildPacket(type, _myself, dest, data);
-    _tx.send(packet, 32);
+    // Build the packet
+    uint64_t packet = Packet::Serialize(p);
 
-    // Wait for the ack
-    unsigned int start = millis();
-    do {
-        if (_rx.available()) {
-            
-            // Unpack the received packet
-            PacketType type;
-            addr_t src;
-            addr_t dest;
-            uint16_t data;
-            UnpackPacket(_rx.getReceivedValue(), &type, &src, &dest, &data);
-            _rx.resetAvailable();
+    for (int retries = 0; retries < NETWORK_PROTOCOL_SEND_RETRIES; retries++) {
 
-            // Discard the packet if it's not directed to us and if it's not an ack
-            if (dest == _myself) {
-                if (type == PacketType::Ack) {
-                    if (data == *expected_ack) {
-                        (*expected_ack)++;
-                        return true;
-                    }
-                } else {
-                    // The packet is still directed to us, maybe it's from another message
-                    ProcessIncomingPacket(type, src, data);
+        // Send!
+        _tx.send(packet, 64);
+        log("Sent packet:", p);
+
+        // Wait for the ack
+        unsigned int start = millis();
+        do {
+            if (_rx.available()) {
+
+                uint64_t rcvRaw = _rx.getReceivedValue();
+                _rx.resetAvailable();
+                
+                // Unpack the received packet
+                Packet rcv;
+                if (!Packet::Parse(rcvRaw, rcv)) {
+                    continue;
                 }
-            }
 
-        }
-    } while (millis() - start <= NETWORK_PROTOCOL_TIMEOUT);
+                // Discard the packet if it's not directed to us and if it's not an ack
+                if (rcv.dest == _myself) {
+                    log("Received packet:", rcv);
+                    if (rcv.type == PacketType::Ack) {
+#ifdef NETWORK_PROTOCOL_DEBUG
+                        char buf[50];
+                        sprintf(buf, "Recognized ACK. Expected seqno: %d. Actual seqno: %d", p.seqno, rcv.seqno);
+                        log(buf);
+#endif
+                        if (rcv.seqno == p.seqno) {
+                            p.seqno++;
+                            return true;
+                        }
+                    } else {
+                        // The packet is still directed to us, maybe it's from another message
+                        ProcessIncomingPacket(rcv);
+                    }
+                }
+
+            }
+        } while (millis() - start <= NETWORK_PROTOCOL_SEND_TIMEOUT);
+
+    }
 
     // Timeout
     return false;
     
 }
 
-bool NetworkProtocol::ProcessIncomingPacket(PacketType type, addr_t src, uint16_t data) {
+bool NetworkProtocol::ProcessIncomingPacket(Packet& packet) {
+
+    log("Received packet:", packet);
 
     // Check if there's an already message with partial data for this source
-    Message* msg = FindMessageBySource(src);
+    Message* msg = FindMessageBySource(packet.src);
     if (msg == NULL) {
 
         // Only an handshake can start a new message
-        if (type != PacketType::Handshake || data > NETWORK_PROTOCOL_MAX_MESSAGE_LENGTH) {
+        if (packet.type != PacketType::Handshake || packet.data > NETWORK_PROTOCOL_MAX_MESSAGE_LENGTH) {
             return false;
         }
 
@@ -179,43 +184,43 @@ bool NetworkProtocol::ProcessIncomingPacket(PacketType type, addr_t src, uint16_
         if (msg == NULL) {
             return false;
         }
-        msg->Init(src, data);
+        msg->Init(packet.src, packet.data);
+        SendAck(packet.src, packet.seqno);
         return false;
         
     } else {
     
         // Parts of this message have already been received, so this must be
         // either some other data, or the termination.
-        switch (type) {
+        switch (packet.type) {
 
             case PacketType::Handshake:
                 // We received an handshake for an already incoming message.
-                // Maybe we lost the termination packet?
+                // Maybe we lost some packet?
                 msg->Free();
-                if (data > NETWORK_PROTOCOL_MAX_MESSAGE_LENGTH) {
+                if (packet.data > NETWORK_PROTOCOL_MAX_MESSAGE_LENGTH) {
                     return false;
                 }
-                msg->Init(src, data);
+                msg->Init(packet.src, packet.data);
+                SendAck(packet.src, packet.seqno);
                 return false;
 
             case PacketType::Data:
+#ifdef NETWORK_PROTOCOL_DEBUG
+                char buf[100];
+                sprintf(buf, "Recognized DATA. Expected seqno: %d. Actual seqno: %d", msg->ExpectedSeqno(), packet.seqno);
+                log(buf);
+#endif
+                if (msg->ExpectedSeqno() != packet.seqno) {
+                    SendAck(packet.src, msg->ExpectedSeqno() - 1);
+                    return false;
+                }
                 if (msg->Received() == msg->Len()) {
                     return false;
                 }
-                msg->Append(data >> 8);
-                msg->Append(data & 0x00ff);
-                return false;
-
-            case PacketType::Termination:
-                if (msg->Received() != msg->Len()) {
-                    msg->Free();
-                    return false;
-                }
-                if (crc16(msg->Contents(), msg->Len()) != data) {
-                    msg->Free();
-                    return false;
-                }
-                return true;
+                msg->Append(packet.data);
+                SendAck(packet.src, packet.seqno);
+                return msg->IsCompleted();
 
             default:
                 return false;
@@ -223,6 +228,17 @@ bool NetworkProtocol::ProcessIncomingPacket(PacketType type, addr_t src, uint16_
         }
         
     }
+}
+
+void NetworkProtocol::SendAck(addr_t dest, uint8_t seqno) {
+    Packet ack;
+    ack.src = _myself;
+    ack.dest = dest;
+    ack.type = PacketType::Ack;
+    ack.seqno = seqno;
+    ack.data = 0;
+    _tx.send(Packet::Serialize(ack), 64);
+    log("Sending ACK:", ack);
 }
 
 NetworkProtocol::Message* NetworkProtocol::FindFreeMessage() {

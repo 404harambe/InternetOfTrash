@@ -10,7 +10,7 @@ LDFLAGS += -fPIC -shared -L$(OUT) -lwiringPi $(shell python-config --ldflags)
 OBJECTS = $(OUT)/NetworkProtocol_wrap.o \
           $(OUT)/arduino/NetworkProtocol.o \
           $(OUT)/arduino/RCSwitch.o \
-          $(OUT)/arduino/crc16.o
+          $(OUT)/arduino/crc8.o
 
 all: default
 
