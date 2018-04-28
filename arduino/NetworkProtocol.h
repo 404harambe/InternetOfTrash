@@ -201,6 +201,9 @@ public:
         }
     };
 
+    /** Custom callback to decide which packets should be discarded. */
+    typedef bool (*PacketFilter)(NetworkProtocol*, Packet*);
+
     NetworkProtocol(addr_t myself, unsigned int rxPin, unsigned int txPin);
 
     /**
@@ -222,13 +225,23 @@ public:
      */
     Message* Receive();
 
+    /** Returns the address associated to this node. */
+    addr_t Address() const;
+
+    /**
+     * Sets a function that acts as a filter for the packets.
+     * Note that this function will see raw unprocessed packets, not whole messages.
+     */
+    void SetPacketFilter(PacketFilter filter);
+
     
 private:
 
-    addr_t _myself;
+    const addr_t _myself;
     RCSwitch _tx;
     RCSwitch _rx;
     Message _messages[NETWORK_PROTOCOL_MAX_INCOMING_MESSAGES];
+    PacketFilter _filter;
 
     Message* FindFreeMessage();
     Message* FindCompletedMessage();

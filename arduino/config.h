@@ -1,12 +1,9 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-// Serial ID of the Arduino (for identification).
-// Max 7 bits.
-#define SERIAL_ID            42
-
-// Address of the sink for communication.
-#define SINK_ADDRESS         ((1 << 8) - 1)
+// Common addresses
+#define THIS_ADDRESS         42
+#define BROADCAST_ADDRESS    ((1 << 8) - 1)
 
 // Pin configuration
 #define PIN_RECEIVER         2

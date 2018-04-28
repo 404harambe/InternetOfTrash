@@ -40,8 +40,13 @@ static void log(const char* message, NetworkProtocol::Packet& packet) {
 #endif
 
 
+static bool DefaultPacketFilter(NetworkProtocol* protocol, NetworkProtocol::Packet* packet) {
+    return protocol->Address() == packet->dest;
+}
+
 NetworkProtocol::NetworkProtocol(addr_t myself, unsigned int rxPin, unsigned int txPin)
-    : _myself(myself)
+    : _myself(myself),
+      _filter(DefaultPacketFilter)
 {   
     // Configure the RCSwitches for both tx and rx
     _rx.enableReceive(rxPin);
@@ -49,6 +54,14 @@ NetworkProtocol::NetworkProtocol(addr_t myself, unsigned int rxPin, unsigned int
     _tx.enableTransmit(txPin);
     _tx.setProtocol(0);
     _tx.setRepeatTransmit(10);
+}
+
+addr_t NetworkProtocol::Address() const {
+    return _myself;
+}
+
+void NetworkProtocol::SetPacketFilter(PacketFilter filter) {
+    _filter = filter;
 }
 
 bool NetworkProtocol::Send(addr_t dest, const unsigned char* data, uint32_t len) {
@@ -100,7 +113,7 @@ NetworkProtocol::Message* NetworkProtocol::Receive() {
     }
 
     // Discard the packet if it's not for us
-    if (rcv.dest != _myself) {
+    if (!_filter(this, &rcv)) {
         return out;
     }
 
@@ -138,7 +151,7 @@ bool NetworkProtocol::TransmitAndWait(Packet& p) {
                 }
 
                 // Discard the packet if it's not directed to us and if it's not an ack
-                if (rcv.dest == _myself) {
+                if (_filter(this, &rcv)) {
                     log("Received packet:", rcv);
                     if (rcv.type == PacketType::Ack) {
 #ifdef NETWORK_PROTOCOL_DEBUG
