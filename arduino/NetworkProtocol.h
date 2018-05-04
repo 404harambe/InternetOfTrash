@@ -83,7 +83,7 @@
 #define NETWORK_PROTOCOL_SEND_TIMEOUT 300
 #endif
 
-//#define NETWORK_PROTOCOL_DEBUG
+#define NETWORK_PROTOCOL_DEBUG
 
 #include "RCSwitch.h"
 #include "util.h"

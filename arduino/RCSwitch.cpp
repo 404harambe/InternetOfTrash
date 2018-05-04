@@ -87,6 +87,7 @@ enum {
 };
 
 #if not defined( RCSwitchDisableReceiving )
+volatile bool RCSwitch::bInterruptDisabled = true;
 volatile unsigned long long RCSwitch::nReceivedValue = 0;
 volatile unsigned int RCSwitch::nReceivedBitlength = 0;
 volatile unsigned int RCSwitch::nReceivedDelay = 0;
@@ -544,6 +545,7 @@ void RCSwitch::enableReceive() {
   if (this->nReceiverInterrupt != -1) {
     RCSwitch::nReceivedValue = 0;
     RCSwitch::nReceivedBitlength = 0;
+    RCSwitch::bInterruptDisabled = false;
 #if defined(RaspberryPi) // Raspberry Pi
     wiringPiISR(this->nReceiverInterrupt, INT_EDGE_BOTH, &handleInterrupt);
 #else // Arduino
@@ -559,6 +561,7 @@ void RCSwitch::disableReceive() {
 #if not defined(RaspberryPi) // Arduino
   detachInterrupt(this->nReceiverInterrupt);
 #endif // For Raspberry Pi (wiringPi) you can't unregister the ISR
+  RCSwitch::bInterruptDisabled = true;
   this->nReceiverInterrupt = -1;
 }
 
@@ -662,6 +665,10 @@ void RECEIVE_ATTR RCSwitch::handleInterrupt() {
   static unsigned int changeCount = 0;
   static unsigned long lastTime = 0;
   static unsigned int repeatCount = 0;
+
+  if (RCSwitch::bInterruptDisabled) {
+    return;
+  }
 
   const long time = micros();
   const unsigned int duration = time - lastTime;

@@ -3,7 +3,7 @@ OUT = out
 ARDUINO = ../arduino
 
 CXX ?= g++
-CXXFLAGS += -std=c++11 -Wall -pedantic -fPIC
+CXXFLAGS += -std=c++11 -Wall -pedantic -fPIC -DRPI
 INCLUDES = -I$(ARDUINO) -I./wiringPi/wiringPi $(shell python-config --includes)
 LDFLAGS += -fPIC -shared -L$(OUT) -lwiringPi $(shell python-config --ldflags)
 

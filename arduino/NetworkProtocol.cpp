@@ -1,40 +1,51 @@
 #include "NetworkProtocol.h"
 
 #ifdef NETWORK_PROTOCOL_DEBUG
+
+#ifdef RPI
+    #include <iostream>
+    #define __print std::cout <<
+#else
+    #define __print Serial.print 
+#endif
+
 static void log(const char* message) {
-    Serial.print("[NETWORK_PROTOCOL] ");
-    Serial.print(message);
-    Serial.print("\n");
+    __print("[NETWORK_PROTOCOL] ");
+    __print(message);
+    __print("\n");
 }
 
 static void log(const char* message, NetworkProtocol::Packet& packet) {
-    Serial.print("[NETWORK_PROTOCOL] ");
-    Serial.print(message);
-    Serial.print(" { ");
+    __print("[NETWORK_PROTOCOL] ");
+    __print(message);
+    __print(" { ");
     switch (packet.type) {
         case NetworkProtocol::PacketType::Handshake:
-            Serial.print("<Handshake>");
+            __print("<Handshake>");
             break;
         case NetworkProtocol::PacketType::Data:
-            Serial.print("<Data>");
+            __print("<Data>");
             break;
         case NetworkProtocol::PacketType::Ack:
-            Serial.print("<Ack>");
+            __print("<Ack>");
             break;
         default:
-            Serial.print("<Unknown>");
+            __print("<Unknown>");
             break;
     }
-    Serial.print(", Source = ");
-    Serial.print(packet.src);
-    Serial.print(", Destination = ");
-    Serial.print(packet.dest);
-    Serial.print(", Seqno = ");
-    Serial.print(packet.seqno);
-    Serial.print(", Data = ");
-    Serial.print(packet.data);
-    Serial.print(" }\n");
+    __print(", Source = ");
+    __print((int) packet.src);
+    __print(", Destination = ");
+    __print((int) packet.dest);
+    __print(", Seqno = ");
+    __print((int) packet.seqno);
+    __print(", Data = ");
+    __print(packet.data);
+    __print(" }\n");
 }
+
+#undef __print
+
 #else
 #define log(...)
 #endif
@@ -140,7 +151,7 @@ bool NetworkProtocol::TransmitAndWait(Packet& p) {
         unsigned int start = millis();
         do {
             if (_rx.available()) {
-
+		   
                 uint64_t rcvRaw = _rx.getReceivedValue();
                 _rx.resetAvailable();
                 
@@ -155,7 +166,7 @@ bool NetworkProtocol::TransmitAndWait(Packet& p) {
                     log("Received packet:", rcv);
                     if (rcv.type == PacketType::Ack) {
 #ifdef NETWORK_PROTOCOL_DEBUG
-                        char buf[50];
+                        char buf[100];
                         sprintf(buf, "Recognized ACK. Expected seqno: %d. Actual seqno: %d", p.seqno, rcv.seqno);
                         log(buf);
 #endif
