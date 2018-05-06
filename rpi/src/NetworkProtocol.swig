@@ -1,12 +1,12 @@
 %include "stdint.i"
 
-%module NetworkProtocol
+%module(directors="1") NetworkProtocol
 %{
 #include "NetworkProtocol.h"
 %}
 
-// We should not pass string length by hand
-%apply (char *STRING, int LENGTH) { (const unsigned char* data, uint32_t len) };
+// Enable directors for the MessageCallback class
+%feature("director") NetworkProtocol::MessageCallback;
 
 // The NetworkProtocol class
 %feature("flatnested");

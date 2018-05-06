@@ -3,7 +3,6 @@
 
 // Common addresses
 #define THIS_ADDRESS         1
-#define BROADCAST_ADDRESS    ((1 << 8) - 1)
 
 // Pin configuration
 #define PIN_RECEIVER         2

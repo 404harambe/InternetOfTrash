@@ -1,3 +1,6 @@
 out/
 src/*.py
+src/*.pyc
 src/*_wrap.cpp
+src/*_wrap.h
+__pycache__
