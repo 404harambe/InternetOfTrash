@@ -8,7 +8,11 @@ const BinSchema = new Schema({
         default: 'generic',
         required: true
     },
-    address: { type: String, required: true }
+    arduinoId: { type: Number, required: false },
+    address: { type: String, required: true },
+    lat: { type: Number, required: true },
+    long: { type: Number, required: true },
+    height: { type: Number, required: true }
 });
 
 const MeasurementSchema = new Schema({

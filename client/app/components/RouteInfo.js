@@ -1,0 +1,32 @@
+import React from 'react'; // eslint-disable-line
+
+function displaySeconds(d) {
+    d = Number(d);
+    const h = Math.floor(d / 3600);
+    const m = Math.floor(d % 3600 / 60);
+    const s = Math.floor(d % 3600 % 60);
+
+    const hDisplay = h > 0 ? h + (h == 1 ? " hour, " : " hours, ") : "";
+    const mDisplay = m > 0 ? m + (m == 1 ? " minute, " : " minutes, ") : "";
+    const sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
+    return hDisplay + mDisplay + sDisplay; 
+}
+
+export default props => {
+
+    const routes = props.route;
+    const route = routes.routes[0];
+
+    // Compute some stats on the route
+    const distance = route.legs.reduce((a, b) => a + b.distance.value, 0);
+    const time = route.legs.reduce((a, b) => a + b.duration.value, 0);
+
+    return (
+        <div>
+            <h1>Route info</h1>
+            <p>Collection center address: <strong>{routes.request.origin.query}</strong></p>
+            <p>Total distance: <strong>{(distance / 1000).toFixed(2)}</strong> Km</p>
+            <p>Estimated travel time: <strong>{displaySeconds(time)}</strong></p>
+        </div>
+    );
+};

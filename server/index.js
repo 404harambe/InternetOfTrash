@@ -1,17 +1,23 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const mqtt = require('async-mqtt');
 const api = require('./api');
+const config = require('./config');
+const { Bin } = require('./models');
 
-const MONGODB_CONNECTION_URI = 'mongodb://localhost:27017/internetoftrash';
-const LISTEN_PORT = 8010;
-
+const mqttclient = mqtt.connect(`mqtt://${config.mqtt.broker_ip}:${config.mqtt.broker_port}`, {
+    username: config.mqtt.auth.user,
+    password: config.mqtt.auth.pwd,
+    keepalive: config.mqtt.keepalive_interval
+});
 const app = express();
 
 // Attaches two helper functions to send responses.
 // They are needed to send responses (both 200s and errors)
 // under the same JSON interface.
 app.use((req, res, next) => {
+    req.mqttclient = mqttclient;
     res.sendSuccess = function (obj) {
         res.status(200).send({
             status: 'ok',
@@ -38,9 +44,26 @@ app.use((err, req, res, next) => {
     res.sendError();
 });
 
-// Connect to the local MongoDB
-mongoose.Promise = Promise;
-mongoose.connect(MONGODB_CONNECTION_URI).then(
-    () => app.listen(LISTEN_PORT, () => console.log(`InternetOfTrash server started on port ${LISTEN_PORT}.`)),
-    console.error.bind(console, 'MongoDB connection error:')
-);
+// Connect to the MQTT broker
+mqttclient.on('connect', async () => {
+
+    // Connect to MongoDB
+    try {
+        mongoose.Promise = Promise;
+        await mongoose.connect(`mongodb://${config.mongo.host}:${config.mongo.port}/${config.mongo.db}`);
+    } catch (e) {
+        console.error.bind(console, 'MongoDB connection error:');
+        return;
+    }
+
+    // Publish to the MQTT topic the list of all the registered arduinos
+    const bins = await Bin.find({ arduinoId: { $gt: 0 } }, 'arduinoId').exec();
+    await Promise.all(bins.map(b => mqttclient.publish(config.mqtt.join_channel, b.arduinoId.toString())));
+
+    // Starts the server
+    app.listen(config.server.listen_port, () => console.log(`InternetOfTrash server started on port ${config.server.listen_port}.`));
+
+});
+mqttclient.on('error', err => {
+    console.error('MQTT broker connection error:', err);
+});
