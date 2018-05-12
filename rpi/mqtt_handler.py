@@ -18,8 +18,8 @@ class MQTThandler:
 
         # Initiate MQTT Client
         self.mqttc = mqtt.Client()
-        self.mqttc.username_pw_set(config['AUTH_USER'],
-                                   password=config['AUTH_PSW'])
+        self.mqttc.username_pw_set(config['auth_user'],
+                                   password=config['auth_psw'])
 
         # Register Event Handlers
         self.mqttc.on_message = self.on_message
@@ -28,9 +28,9 @@ class MQTThandler:
 
     def run(self):
         # Connect with MQTT Broker
-        self.mqttc.connect(self.config['BROKER_IP'],
-                           int(self.config['BROKER_PORT']),
-                           int(self.config['KEEPALIVE_INTERVAL']))
+        self.mqttc.connect(self.config['broker_ip'],
+                           int(self.config['broker_port']),
+                           int(self.config['keepalive_interval']))
 
         # Continue the network loop
         self.mqttc.loop_forever()
@@ -39,7 +39,7 @@ class MQTThandler:
     # Define on_connect event Handler
     def on_connect(self, mosq, obj, flags, rc):
         # Subscribe to the topic from which we will get the arduinos ids
-        self.mqttc.subscribe(self.config['JOIN_CHANNEL'], 0)
+        self.mqttc.subscribe(self.config['join_channel'], 0)
 
 
     # Define on_subscribe event Handler
@@ -48,16 +48,16 @@ class MQTThandler:
 	
     # Define on_message event Handler
     def on_message(self, mosq, obj, msg):
-        if msg.topic == self.config['JOIN_CHANNEL']:
+        if msg.topic == self.config['join_channel']:
             #Subscribe to the new node's channel to receive its updates
-            self.mqttc.subscribe(self.config['BASE_CHANNEL']+msg.payload.decode('UTF-8'))
+            self.mqttc.subscribe(self.config['base_channel']+msg.payload.decode('UTF-8'))
             self.nodes_queue.put(msg.payload.decode('UTF-8'))
             try:
                 self.cond.acquire()
                 self.cond.notify()
             finally: 
                 self.cond.release()   
-        elif re.search("^" + self.config['BASE_CHANNEL'] + "\d+$", msg.topic) != None:
+        elif re.search("^" + self.config['base_channel'] + "\d+$", msg.topic) != None:
             self.nodes_queue.put(msg.payload.decode('UTF-8'))
             try:
                 self.cond.acquire()

@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 import SyncOrderedList
 import threading
 from time import time
@@ -9,8 +11,13 @@ import requests
 from datetime import datetime
 import mqtt_handler
 
+# Config file name is expected as an arg
+if len(sys.argv) < 2:
+    print('Usage: %s <config.ini>' % (sys.argv[0]))
+    sys.exit(1)
+
 config = configparser.ConfigParser()
-config.read('myconfig.ini')
+config.readfp(open(sys.argv[1]))
 
 SIMULATE = True
 
@@ -20,7 +27,7 @@ tasks = SyncOrderedList.SyncOrderedList()
 
 
 def post(url, data):
-    res = requests.post(config['RPI']['REMOTE_ENDPOINT'] + url, json=data)
+    res = requests.post(config['rpi']['remote_endpoint'] + url, json=data)
     if res.status_code != 200:
         raise Exception("HTTP Error " + res.status_code)
     resdata = res.json()
@@ -58,7 +65,7 @@ if __name__ == "__main__":
             print("Failed initializing WiringPI.\n")
             sys.exit(1)
 
-        mqtt_handler = mqtt_handler.MQTThandler(tasks, cond, config['MQTT'])
+        mqtt_handler = mqtt_handler.MQTThandler(tasks, cond, config['mqtt'])
         threading._start_new_thread(mqtt_handler.run,())
 
         proto = NetworkProtocol(42, 0, 2)
@@ -79,7 +86,7 @@ if __name__ == "__main__":
             cb = OnMessage()
             proto.RequestMeasurement(dest[0], cb)
             result = cb.result
-            tasks.put(dest[0], config['RPI']['UPDATE_INTERVAL'])
+            tasks.put(dest[0], config['rpi']['update_interval'])
 
     # Add some fake data if we are simulating
     else:
