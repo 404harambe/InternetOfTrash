@@ -9,17 +9,18 @@ import requests
 from datetime import datetime
 import mqtt_handler
 
-BASE_ENDPOINT = "https://internetoftrash.marcocameriero.net/api"
+config = configparser.ConfigParser()
+config.read('myconfig.ini')
+
 SIMULATE = True
-UPDATE_TIME = 3600 # 1 hour
 
 cond = threading.Condition()
 lock = threading.Lock()
-tasks = SyncOrderedList()
+tasks = SyncOrderedList.SyncOrderedList()
 
 
 def post(url, data):
-    res = requests.post(BASE_ENDPOINT + url, json=data)
+    res = requests.post(config['RPI']['REMOTE_ENDPOINT'] + url, json=data)
     if res.status_code != 200:
         raise Exception("HTTP Error " + res.status_code)
     resdata = res.json()
@@ -57,8 +58,8 @@ if __name__ == "__main__":
             print("Failed initializing WiringPI.\n")
             sys.exit(1)
 
-        mqtt_thread = threading.Thread(target=mqtt_handler.MQTThandler().__init__(tasks, "myconfig.ini"))
-        mqtt_thread.start()
+        mqtt_handler = mqtt_handler.MQTThandler(tasks, cond, config['MQTT'])
+        threading._start_new_thread(mqtt_handler.run,())
 
         proto = NetworkProtocol(42, 0, 2)
         while True:
@@ -67,9 +68,10 @@ if __name__ == "__main__":
             #   receive answer from arduino
             #   send data to server
 
-            # Wait until receive request for measurement from server or x minutes have passed
-            while tasks.empty() or tasks.getFirst()[1] > time():
-                cond.wait(timeout=tasks.getFirst()[1])
+            # Wait for a new task
+            while (tasks.wait_for_task()>0):
+                cond.acquire()
+                cond.wait(timeout=tasks.wait_for_task())
 
             # Request new measurements
             dest = tasks.pop()
@@ -77,7 +79,7 @@ if __name__ == "__main__":
             cb = OnMessage()
             proto.RequestMeasurement(dest[0], cb)
             result = cb.result
-            tasks.put(dest[0], UPDATE_TIME)
+            tasks.put(dest[0], config['RPI']['UPDATE_INTERVAL'])
 
     # Add some fake data if we are simulating
     else:
