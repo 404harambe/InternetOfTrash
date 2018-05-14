@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const restify = require('express-restify-mongoose');
 const { Bin, Measurement } = require('./models');
+const mqtt = require('./mqtt');
 
 const router = express.Router();
 
@@ -57,32 +58,28 @@ router.post('/bin/:id/update', async (req, res, next) => {
         if (bin) {
             
             // Send a message to the arduino controlling this bin
-            if (bin.arduinoId > 0) {
-                await req.mqttclient.publish('arduino/registered/' + bin.arduinoId, 'update');
+            let newMeasurement;
+            try {
+                newMeasurement = await mqtt.requestUpdate(bin._id);
+            } catch (e) {
+                res.sendError(e);
+                return;
             }
 
-            res.sendSuccess(bin);
+            // Create a new measurement and add it to the bin
+            try {
+                const m = await Measurement.create({ timestamp: new Date(), binId: bin._id, value: newMeasurement });
+                res.sendSuccess({ ...bin.toObject(), lastMeasurement: m });
+            } catch (e) {
+                next(e);
+                return;
+            }
 
         } else {
             res.sendError('Not found.');
         }
     } catch (e) {
         next(e);
-    }
-});
-
-// Route to allow bulk uploading of measurements.
-// This endpoint allows to upload multiple measurements for different bins in a single request.
-router.post('/bulkmeasurements', async (req, res, next) => {
-    try {
-        await Measurement.insertMany(req.body);
-        res.sendSuccess();
-    } catch (e) {
-        if (e.name === 'ValidationError') {
-            res.sendError('Invalid request.');
-        } else {
-            next(e);
-        }
     }
 });
 

@@ -26,7 +26,8 @@ export default class BinMarker extends React.Component {
 
         this.state = {
             popoverOpen: false,
-            updating: false
+            updating: false,
+            error: null
         };
     }
 
@@ -36,13 +37,14 @@ export default class BinMarker extends React.Component {
         });
     }
 
-    showError() {
-        
+    showError(error) {
+        this.setState({ error });
     }
 
     onUpdateClick() {
         this.setState({
-            updating: true
+            updating: true,
+            error: null
         });
 
         const { bin } = this.props;
@@ -53,6 +55,7 @@ export default class BinMarker extends React.Component {
                     if (data.status === 'ok') {
                         const newbin = data.contents;
                         extend(bin, newbin);
+                        this.showError(null);
                     } else {
                         this.showError(data.error);
                     }
@@ -68,7 +71,7 @@ export default class BinMarker extends React.Component {
 
     render() {
         const { bin } = this.props;
-        const { popoverOpen, updating } = this.state;
+        const { popoverOpen, updating, error } = this.state;
 
         const level = (bin.height - (bin.lastMeasurement ? bin.lastMeasurement.value : bin.height)) / bin.height;
         const binColor = binColors[bin.type];
@@ -106,6 +109,11 @@ export default class BinMarker extends React.Component {
                             Full: <strong>{(level * 100).toFixed(2)}%</strong><br />
                             <Progress value={updating ? 100 : level * 100} color={progressColor} animated={updating} />
                         </div>
+
+                        {/* Error message */}
+                        {error &&
+                            <div style={{ marginBottom: '5px', color: 'red', fontWeight: 'bold' }}>{error}</div>
+                        }
 
                         {/* Update button */}
                         <div className="text-right">

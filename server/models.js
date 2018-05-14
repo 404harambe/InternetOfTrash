@@ -8,7 +8,6 @@ const BinSchema = new Schema({
         default: 'generic',
         required: true
     },
-    arduinoId: { type: Number, required: false },
     address: { type: String, required: true },
     lat: { type: Number, required: true },
     long: { type: Number, required: true },
