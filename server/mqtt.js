@@ -1,7 +1,26 @@
 /**
  * - `bin/:id/measurement`: used by the RPI to push an automatic measurement to the server.
+ *   Message format:
+ *   {
+ *       timestamp: '...',
+ *       binId: '...',
+ *       value: 100
+ *   }
+ * 
  * - `bin/:id/update`: used by the server to request an update on a specific bin.
+ *   Message format:
+ *   {
+ *       reqId: 0 // Opaque request id. Expected matching ID in the response.
+ *   }
+ * 
  * - `bin/:id/update/response`
+ *   Message format:
+ *   {
+ *       reqId: 0,
+ *       status: 'ok' | 'error',
+ *       value: 100,                  // If status === 'ok'
+ *       error: 'Lid not closed.'     // If status === 'error'
+ *   }
  */
 
 const mqtt = require('async-mqtt');
