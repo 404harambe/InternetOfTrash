@@ -49,6 +49,8 @@ void setup() {
 void loop() {
     if (bt.available() > 0) {
         int command = bt.read();
+
+        unsigned long m = 0;
         switch (command) {
 
             case 0:
@@ -58,16 +60,16 @@ void loop() {
 
             case 1:
                 Serial.print("Measurement request.\n");
-                unsigned long m;
-                if (!perform_measurement(&m)) {
-                    Serial.print((unsigned char) m);
+                if (perform_measurement(&m)) {
+                    bt.write((unsigned char) m);
                 } else {
-                    Serial.print((unsigned char) -1);
+                    bt.write((unsigned char) -1);
                 }
                 break;
 
             default:
                 // Ignore any invalid command
+                Serial.print("Invalid command.\n");
                 break;
 
         }
