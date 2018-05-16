@@ -7,9 +7,7 @@ def synchronized_with_attr(lock_name):
             lock = getattr(self, lock_name)
             with lock:
                 return method(self, *args, **kws)
-
         return synced_method
-
     return decorator
 
 
@@ -30,19 +28,17 @@ class SyncOrderedList:
 
 
     @synchronized_with_attr("lock")
-    def put(self, arduino_id, time=0):
-        print('put request')
-        idx = self.is_in(arduino_id)
+    def put(self, bin_id, msg, time=0, force=False):
+        idx = self.is_in(bin_id)
         if idx > -1:
             self.remove_element(idx)
-            print("Removing arduino %s" % (arduino_id))
         for i in range(len(self.syncList)):
                 if time <= self.syncList[i][1]:
-                        print("Updating time for arduino %s from %f to %f" % (arduino_id, self.syncList[i][1], time))
-                        self.syncList.insert(i, (arduino_id, time))
+                        print("Updating time for arduino %s from %f to %f" % (bin_id, self.syncList[i][1], time))
+                        self.syncList.insert(i, (bin_id, time, force, msg['reqID']))
                         return
-        self.syncList.append((arduino_id, time))
-        print("Now listening for arduino %s" % (arduino_id))
+        self.syncList.append((bin_id, time, force, msg['reqID']))
+        print("Now listening for arduino %s" % (bin_id))
 
 
     @synchronized_with_attr("lock")
