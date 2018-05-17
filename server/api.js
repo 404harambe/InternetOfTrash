@@ -12,19 +12,20 @@ restify.serve(router, Bin, {
     version: '',
     private: [ '__v' ],
     postRead: (req, res, next) => {
+        const wasArray = Array.isArray(req.erm.result);
         const result = req.erm.result;
         const statusCode = req.erm.statusCode;
       
         // Add to each bin the most recent measurement
         Promise.all(
-            result.map(bin =>
+            (wasArray ? result : [result]).map(bin =>
                 Measurement.findOne({ binId: bin._id }).sort({ timestamp: 'desc' }).exec()
                     .then(m => ({ ...bin, lastMeasurement: m }))
             )
         )
         .then(
             res => {
-                req.erm.result = res;
+                req.erm.result = wasArray ? res : res[0];
                 next();
             },
             err => next(err)
