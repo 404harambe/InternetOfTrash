@@ -26,9 +26,6 @@ class BThandler:
 				try:
 					sock[1].send(self.conf['measurement_request'])
 					resp = self.recv_full(sock[1], 1)
-
-					print("resp: ", int.from_bytes(resp, byteorder='little',signed=False), sep="\t")
-
 					return int.from_bytes(resp, byteorder='little', signed=False)
 				except Exception as e:
 					print('Failed with:', e)
@@ -62,7 +59,6 @@ class BThandler:
 							sock.sendall(self.conf['name_request'])
 							name = str(self.recv_full(sock, 24), 'utf-8')
 							self.client_socks.append((name, sock))
-							print('connected to %s' % str(name))
 							# Subscribe to the new node's channel to receive its updates
 							self.mqtt_handler.subscribe_to_node(name)
 							self.nodes_queue.put(bin_id=name, msg={'reqId':-1})

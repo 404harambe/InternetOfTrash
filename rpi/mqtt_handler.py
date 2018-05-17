@@ -38,7 +38,6 @@ class MQTThandler:
 		self.mqttc.subscribe(self.config['mqtt']['base_channel']+node+'/update')
 
 	def update_node(self, node, msg):
-		print(self.config['mqtt']['base_channel']+node+'/measurement', msg)
 		self.mqttc.publish(self.config['mqtt']['base_channel']+node+'/measurement', json.dumps(msg))
 
 	def force_update_node(self, node, msg):
@@ -55,8 +54,7 @@ class MQTThandler:
 	# Define on_message event Handler
 	def _on_message(self, mosq, obj, msg):
 		bin_id = msg.topic.split('/')[1]
-		print("--- ",msg.payload, sep=" ")
-		self.nodes_queue.put(bin_id=bin_id, msg=json.loads(msg.payload, 'UTF-8'), force=True)
+		self.nodes_queue.put(bin_id=bin_id, msg=json.loads(msg.payload.decode("UTF-8"), 'UTF-8'), force=True)
 		try:
 			self.cond.acquire()
 			self.cond.notify()

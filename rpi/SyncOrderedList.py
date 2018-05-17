@@ -38,7 +38,7 @@ class SyncOrderedList:
                         self.syncList.insert(i, (bin_id, libtime.time()+time, force, msg['reqId']))
                         return
         self.syncList.append((bin_id, libtime.time()+time, force, msg['reqId']))
-        print("Now listening for arduino %s" % (bin_id))
+        print("List status now:", self.syncList)
         print("Next measurement in ", time)
 
     @synchronized_with_attr("lock")
@@ -54,9 +54,8 @@ class SyncOrderedList:
 
     @synchronized_with_attr("lock")
     def wait_for_task(self):
-        print("List status now:", self.syncList)
         if self.empty():
-            return libtime.time()+5 #TODO add more time
+            return libtime.time()+5
         else:
             return int(self.get_first()[1])
 
