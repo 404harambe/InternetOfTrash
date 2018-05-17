@@ -1,5 +1,5 @@
 import threading
-
+import time as libtime
 
 def synchronized_with_attr(lock_name):
     def decorator(method):
@@ -28,18 +28,18 @@ class SyncOrderedList:
 
 
     @synchronized_with_attr("lock")
-    def put(self, bin_id, msg, time=0, force=False):
+    def put(self, bin_id, msg={'reqId':-1}, time=0, force=False):
         idx = self.is_in(bin_id)
         if idx > -1:
             self.remove_element(idx)
         for i in range(len(self.syncList)):
                 if time <= self.syncList[i][1]:
                         print("Updating time for arduino %s from %f to %f" % (bin_id, self.syncList[i][1], time))
-                        self.syncList.insert(i, (bin_id, time, force, msg['reqID']))
+                        self.syncList.insert(i, (bin_id, libtime.time()+time, force, msg['reqId']))
                         return
-        self.syncList.append((bin_id, time, force, msg['reqID']))
+        self.syncList.append((bin_id, libtime.time()+time, force, msg['reqId']))
         print("Now listening for arduino %s" % (bin_id))
-
+        print("Next measurement in ", time)
 
     @synchronized_with_attr("lock")
     def remove_element(self, index):
@@ -54,8 +54,9 @@ class SyncOrderedList:
 
     @synchronized_with_attr("lock")
     def wait_for_task(self):
+        print("List status now:", self.syncList)
         if self.empty():
-            return 3600
+            return libtime.time()+5 #TODO add more time
         else:
             return int(self.get_first()[1])
 
