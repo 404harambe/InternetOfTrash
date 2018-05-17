@@ -53,12 +53,12 @@ void loop() {
         unsigned long m = 0;
         switch (command) {
 
-            case 0:
+            case '0':
                 Serial.print("Name request. Sending " THIS_ID ".\n");
                 bt.print(THIS_ID);
                 break;
 
-            case 1:
+            case '1':
                 Serial.print("Measurement request.\n");
                 if (perform_measurement(&m)) {
                     bt.write((unsigned char) m);
