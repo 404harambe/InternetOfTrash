@@ -1,6 +1,2 @@
-out/
-src/*.py
-src/*_wrap.cpp
-src/*_wrap.h
 *.pyc
 __pycache__
