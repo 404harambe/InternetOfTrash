@@ -4,9 +4,11 @@ const mongoose = require('mongoose');
 const api = require('./api');
 const config = require('./config');
 const { Bin } = require('./models');
-const { mqttclient } = require('./mqtt');
+const mqtt = require('./mqtt');
 
 const app = express();
+const server = require('http').Server(app);
+const io = require('socket.io')(server);
 
 // Attaches two helper functions to send responses.
 // They are needed to send responses (both 200s and errors)
@@ -39,7 +41,7 @@ app.use((err, req, res, next) => {
 });
 
 // Connect to the MQTT broker
-mqttclient.on('connect', () => {
+mqtt.mqttclient.on('connect', () => {
 
     console.log('MQTT broker connected.');
     
@@ -50,12 +52,17 @@ mqttclient.on('connect', () => {
             console.log('MongoDB connected.');
             
             // Starts the HTTP server
-            app.listen(config.server.listen_port, () => console.log(`InternetOfTrash server started on port ${config.server.listen_port}.`));
+            server.listen(config.server.listen_port, () => console.log(`InternetOfTrash server started on port ${config.server.listen_port}.`));
             
         })
         .catch(console.error.bind(console, 'MongoDB connection error:'));
 
 });
-mqttclient.on('error', err => {
+mqtt.mqttclient.on('error', err => {
     console.error('MQTT broker connection error:', err);
+});
+
+// Redirect all new measurements as broadcast socket.io messages
+mqtt.on('measurement', m => {
+    io.emit('measurement', m.toJSON());
 });

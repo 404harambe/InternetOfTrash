@@ -36,12 +36,13 @@ const config = {
     contentBase: resolve(__dirname, 'build'),
     historyApiFallback: true,
     publicPath: '/',
-    proxy: {
-      '/api/**': {
+    proxy: [
+      {
+        context: ['/api/**', '/socket.io/**'],
         target: 'https://internetoftrash.marcocameriero.net',
         changeOrigin: true
       }
-    }
+    ]
   },
   
   resolve: {

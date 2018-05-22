@@ -23,15 +23,30 @@
  *   }
  */
 
-const mqtt = require('async-mqtt');
+const EventEmitter = require('events');
 const config = require('./config');
 const { Measurement } = require('./models');
 
-const mqttclient = mqtt.connect(`mqtt://${config.mqtt.broker_ip}:${config.mqtt.broker_port}`, {
+const mqttclient = require('async-mqtt').connect(`mqtt://${config.mqtt.broker_ip}:${config.mqtt.broker_port}`, {
     username: config.mqtt.auth_user,
     password: config.mqtt.auth_psw,
     keepalive: parseInt(config.mqtt.keepalive_interval, 10)
 });
+
+// We use a class to conveniently extend EventEmitter
+class MQTT extends EventEmitter {
+    constructor() {
+        super();
+        this.mqttclient = mqttclient;
+    }
+    
+    async requestUpdate(binId) {
+        const { id, promise } = pendingUpdateRequests.create();
+        await mqttclient.publish(`bin/${binId}/update`, JSON.stringify({ reqId: id }));
+        return await promise;
+    }
+};
+const mqtt = new MQTT();
 
 // Cache of pending update requests
 const pendingUpdateRequests = (function () {
@@ -66,7 +81,8 @@ const routes = [
     [ /^bin\/([\da-f]+)\/measurement$/i, async (payload, binId) => {
         try {
             const m = JSON.parse(payload);
-            await Measurement.create(m);
+            const measurement = await Measurement.create(m);
+            mqtt.emit('measurement', measurement);
             console.log('New measurement for bin ' + binId);
         } catch (e) {
             // Ignore invalid message
@@ -112,12 +128,4 @@ Promise.all([
 .catch(console.error.bind(console, 'Error subscribing to MQTT topics.'));
 
 // Export the native client and some helper functions
-module.exports = {
-    mqttclient,
-
-    async requestUpdate(binId) {
-        const { id, promise } = pendingUpdateRequests.create();
-        await mqttclient.publish(`bin/${binId}/update`, JSON.stringify({ reqId: id }));
-        return await promise;
-    }
-};
+module.exports = mqtt;

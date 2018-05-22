@@ -18,7 +18,8 @@
     },
     "globals": {
         "React": true,
-        "google": true
+        "google": true,
+        "io": true
     },
     "rules": {
         "indent": [ "error", 4 ],

@@ -9,7 +9,9 @@ export default class App extends React.Component {
     
     constructor(props) {
         super(props);
+        this.io = io();
         this.computeRouteForBins = this.computeRouteForBins.bind(this);
+        this.onMeasurementUpdate = this.onMeasurementUpdate.bind(this);
         this.state = {
             loading: true,
             bins: [],
@@ -23,8 +25,27 @@ export default class App extends React.Component {
             .then(data => {
                 if (data.status === 'ok') {
                     this.setState({ loading: false, bins: data.contents });
+                    this.io.on('measurement', this.onMeasurementUpdate);
                 }
             });
+    }
+
+    componentWillUnmount() {
+        this.io.removeListener('measurement', this.onMeasurementUpdate);
+    }
+
+    onMeasurementUpdate(measurement) {
+        // Update the last measurement of the corresponding bin
+        const newBins = this.state.bins.map(b => {
+            if (b._id !== measurement.binId) {
+                return b;
+            }
+            if (new Date(b.lastMeasurement.timestamp) < new Date(measurement.timestamp)) {
+                b.lastMeasurement = measurement;
+            }
+            return b;
+        });
+        this.setState({ bins: newBins });
     }
 
     computeRouteForBins(type) {
