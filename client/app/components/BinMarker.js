@@ -73,7 +73,9 @@ export default class BinMarker extends React.Component {
         const { bin } = this.props;
         const { popoverOpen, updating, error } = this.state;
 
-        const level = (bin.height - (bin.lastMeasurement ? bin.lastMeasurement.value : bin.height)) / bin.height;
+        let level = (bin.height - (bin.lastMeasurement ? bin.lastMeasurement.value : bin.height)) / bin.height;
+        level = level < 0 ? 0 : (level > 1 ? 1 : level);
+
         const binColor = binColors[bin.type];
         const bgColor = backgroundColors[bin.type];
         const progressColor = updating ? 'info' : level <= 1 / 3 ? 'success' : level <= 2 / 3 ? 'warning': 'danger';
