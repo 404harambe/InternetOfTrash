@@ -19,8 +19,8 @@ config = configparser.ConfigParser()
 # Construct reply message
 def create_msg(dest, resp):
 	if dest[3]!=-1:
-		return {'reqId': dest[3], 'status': 'ok' if resp<255 else 'error', 'value': resp, 
-	'error': ('Lid not closed' if str(resp)==config['comm']['open_lid'] else '') if str(resp)!=config['comm']['timeout'] else 'Timed out'}
+		return {'reqId': dest[3], 'status': 'ok' if resp<255  else 'error', 'value': resp, 
+	'error': ('Lid not closed' if str(resp)==config['comm']['open_lid'] else '') }
 	else:
 		return {'timestamp': datetime.datetime.utcnow().isoformat(), 'binId': dest[0], 'value': resp }
 
@@ -64,15 +64,19 @@ if __name__ == "__main__":
 
         # Request new measurements
 		dest = tasks.pop()
+		print("Requesting measurement from ", dest[0])
 		response = bt_handler.request_measurement(dest[0])
-		msg = create_msg(dest, response)
 
+		if response is None:
+			response = 255
+
+		print("Received message from ", dest[0], " : ",response)
+		msg = create_msg(dest, response)
 		if dest[2]==True: # Instant update
-			print('Insta update:',msg)
 			mqtt_handler.force_update_node(dest[0], msg)
 			tasks.put(dest[0], time=float(config['rpi']['update_interval']))
 		else: # Regular update
-			if response > 0:
+			if response < 255:
 				mqtt_handler.update_node(dest[0], msg)
 				tasks.put(dest[0], time=float(config['rpi']['update_interval']))
 			else:

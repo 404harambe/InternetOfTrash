@@ -50,8 +50,7 @@ class BThandler:
 					name = bluetooth.lookup_name(client)
 					if name  is not None:
 						if name.startswith(self.conf['bt_prefix']):
-							print(name)
-							#TODO pair
+							print("Connected to ",name)
 							#Open a connection to the node
 							sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 							sock.connect((client,1))

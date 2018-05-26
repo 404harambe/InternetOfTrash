@@ -49,7 +49,8 @@ class MQTThandler:
 
 	# Define on_subscribe event Handler
 	def _on_subscribe(self, mosq, obj, mid, granted_qos):
-		print("Subscribed to a topic")
+		#print("Subscribed to a topic")
+		pass
 
 	# Define on_message event Handler
 	def _on_message(self, mosq, obj, msg):

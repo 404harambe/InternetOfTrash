@@ -26,6 +26,15 @@ class SyncOrderedList:
 
         return -1
 
+    @synchronized_with_attr("lock")
+    def print_list(self):
+        print("\n-------CURRENT TASKS-------")
+        print("---------------------------")
+        for i, el in enumerate(self.syncList):
+            realtime = max(0, int(el[1]-libtime.time()))
+            print(i, " | ID: ", el[0], " | Time: ", realtime , " | Force: " , el[2], " | ReqID: ", el[3])
+
+        print("---------------------------\n")
 
     @synchronized_with_attr("lock")
     def put(self, bin_id, msg={'reqId':-1}, time=0, force=False):
@@ -33,13 +42,12 @@ class SyncOrderedList:
         if idx > -1:
             self.remove_element(idx)
         for i in range(len(self.syncList)):
-                if time <= self.syncList[i][1]:
-                        print("Updating time for arduino %s from %f to %f" % (bin_id, self.syncList[i][1], time))
+                if libtime.time()+time <= self.syncList[i][1]:
                         self.syncList.insert(i, (bin_id, libtime.time()+time, force, msg['reqId']))
+                        self.print_list()
                         return
         self.syncList.append((bin_id, libtime.time()+time, force, msg['reqId']))
-        print("List status now:", self.syncList)
-        print("Next measurement in ", time)
+        self.print_list()
 
     @synchronized_with_attr("lock")
     def remove_element(self, index):
