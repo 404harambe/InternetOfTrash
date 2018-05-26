@@ -1,7 +1,7 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#define THIS_ID              "5af1ae01d10de93c0ae652d8"
+#define THIS_ID              "5af1ae79d10de93c0ae652d9"
 
 // Pin configuration
 #define PIN_BT_SERIAL_RX     2 // This pin has to be connected to the TX pin of the bluetooth ic

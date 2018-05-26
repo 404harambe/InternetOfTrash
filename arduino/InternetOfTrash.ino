@@ -1,6 +1,7 @@
+
 #include <NewPing.h>
 #include <SoftwareSerial.h>
-
+#include <math.h>
 #include "config.h"
 
 SoftwareSerial bt(PIN_BT_SERIAL_RX, PIN_BT_SERIAL_TX);
@@ -24,17 +25,36 @@ bool perform_measurement(unsigned long* val) {
         return false;
     } else {
     
-        // Perform 3 measurements and take the avg
-        unsigned long m1 = sonar.ping_cm();
-        unsigned long m2 = sonar.ping_cm();
-        unsigned long m3 = sonar.ping_cm();
-        unsigned long m = (m1 + m2 + m3) / 3;
-    
+        // Perform 10 measurements and try to get rid of the noise
+        unsigned long measurements[10];
+        float sum = 0, mean = 0, std = 0, c=0;
+        int i = 0;
+        for (i = 0; i < 10; i++){
+            measurements[i] = sonar.ping_cm();
+            Serial.print(measurements[i]);
+            Serial.print(" <-> ");
+            sum += measurements[i];
+        }
+        mean = sum/10;
+        for (i = 0; i < 10; i++)
+            std += pow(measurements[i]-mean, 2);
+        std = sqrt(std/10);
+
+        sum = 0;
+        
+        for (i = 0; i < 10; i++)
+            if(measurements[i] <= mean+std && measurements[i] >= mean-std){
+                sum += measurements[i];
+                c += 1;
+            }
+        sum /= c;
+
         Serial.print("Measured value: ");
-        Serial.print(m);
+        Serial.print(sum);
         Serial.print("\n");
-    
-        *val = m;
+        if (sum>255)
+            sum = 255;
+        *val = sum;
         return true;
         
     }
