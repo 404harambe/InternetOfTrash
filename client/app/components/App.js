@@ -1,5 +1,6 @@
 import React from 'react';
 import FAIcon from '@fortawesome/react-fontawesome';
+import { ToastContainer, toast } from 'react-toastify';
 import Map from './Map';
 import NavBar from './NavBar';
 import RouteInfo from './RouteInfo';
@@ -36,17 +37,34 @@ export default class App extends React.Component {
     }
 
     onMeasurementUpdate(measurement) {
+
         // Update the last measurement of the corresponding bin
+        let didUpdate = null;
         const newBins = this.state.bins.map(b => {
             if (b._id !== measurement.binId) {
                 return b;
             }
-            if (new Date(b.lastMeasurement.timestamp) < new Date(measurement.timestamp)) {
+            
+            // eslint-disable console
+            console.group('Got new update!');
+            console.log('Measurement', measurement);
+            console.log('Bin', b);
+            console.groupEnd();
+            // eslint-enable console
+
+            //if (new Date(b.lastMeasurement.timestamp) < new Date(measurement.timestamp)) {
                 b.lastMeasurement = measurement;
-            }
+                didUpdate = b.address;
+            //}
             return b;
         });
-        this.setState({ bins: newBins });
+
+        if (didUpdate !== null) {
+            toast.info("New live data for " + didUpdate, {
+                position: toast.POSITION.BOTTOM_LEFT
+            });
+            this.setState({ bins: newBins });
+        }
     }
 
     computeRouteForBins(type) {
@@ -136,6 +154,8 @@ export default class App extends React.Component {
                         </div>
                     </div>
                 )}
+
+                <ToastContainer />
             </div>
         );
         

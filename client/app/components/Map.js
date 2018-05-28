@@ -1,5 +1,6 @@
 import React from 'react'; // eslint-disable-line no-unused-vars
 import GoogleMapReact from 'google-map-react';
+import equal from 'deep-equal';
 import BinMarker from './BinMarker';
 import config from 'config';
 
@@ -30,7 +31,7 @@ export default class Map extends React.Component {
     }
 
     componentWillUpdate(nextProps) {
-        if (this._directionsRenderer) {
+        if (this._directionsRenderer && this.props.route != nextProps.route) {
             this._directionsRenderer.setDirections(nextProps.route || { routes: [] });
         }
     }

@@ -7,6 +7,7 @@ import Root from './config/Root';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free-solid';
 import '@fortawesome/fontawesome-free-regular';
+import 'react-toastify/dist/ReactToastify.min.css';
 
 const render = (Component) => {
     ReactDOM.render(
