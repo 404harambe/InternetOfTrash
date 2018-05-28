@@ -27,32 +27,34 @@ bool perform_measurement(unsigned long* val) {
     
         // Perform 10 measurements and try to get rid of the noise
         unsigned long measurements[10];
-        float sum = 0, mean = 0, std = 0, c=0;
+        float sum = 0, mean = 0, std = 0, c = 0;
         int i = 0;
         for (i = 0; i < 10; i++){
             measurements[i] = sonar.ping_cm();
             Serial.print(measurements[i]);
-            Serial.print(" <-> ");
+            Serial.print(", ");
             sum += measurements[i];
         }
-        mean = sum/10;
+        mean = sum / 10;
         for (i = 0; i < 10; i++)
-            std += pow(measurements[i]-mean, 2);
-        std = sqrt(std/10);
+            std += pow(measurements[i] - mean, 2);
+        std = sqrt(std / 10);
 
         sum = 0;
         
         for (i = 0; i < 10; i++)
-            if(measurements[i] <= mean+std && measurements[i] >= mean-std){
+            if(measurements[i] <= mean + std && measurements[i] >= mean - std){
                 sum += measurements[i];
                 c += 1;
             }
         sum /= c;
 
-        Serial.print("Measured value: ");
+        Serial.print("\nStandard deviation: ");
+        Serial.print(std);
+        Serial.print("\nMeasured value: ");
         Serial.print(sum);
         Serial.print("\n");
-        if (sum>255)
+        if (sum > 255)
             sum = 255;
         *val = sum;
         return true;
