@@ -1,7 +1,8 @@
 import React from 'react';
-import { Button, Progress, Popover, PopoverHeader, PopoverBody } from 'reactstrap';
+import { Button, Popover, PopoverHeader, PopoverBody } from 'reactstrap';
 import FAIcon from '@fortawesome/react-fontawesome';
 import extend from 'extend';
+import BinStats from './BinStats';
 
 const binColors = {
     'plastic': '#0053ad',
@@ -73,12 +74,8 @@ export default class BinMarker extends React.Component {
         const { bin } = this.props;
         const { popoverOpen, updating, error } = this.state;
 
-        let level = (bin.height - (bin.lastMeasurement ? bin.lastMeasurement.value : bin.height)) / bin.height;
-        level = level < 0 ? 0 : (level > 1 ? 1 : level);
-
         const binColor = binColors[bin.type];
         const bgColor = backgroundColors[bin.type];
-        const progressColor = updating ? 'info' : level <= 1 / 3 ? 'success' : level <= 2 / 3 ? 'warning': 'danger';
 
         return (
             <div>
@@ -106,11 +103,7 @@ export default class BinMarker extends React.Component {
                     <PopoverBody>
                         
                         {/* Stats */}
-                        <div style={{ marginBottom: '5px' }}>
-                            Type: <strong>{bin.type[0].toUpperCase() + bin.type.substring(1)}</strong><br />
-                            Full: <strong>{(level * 100).toFixed(2)}%</strong><br />
-                            <Progress value={updating ? 100 : level * 100} color={progressColor} animated={updating} />
-                        </div>
+                        <BinStats bin={bin} isIndeterminate={updating} style={{ marginBottom: '5px' }} />
 
                         {/* Error message */}
                         {error &&

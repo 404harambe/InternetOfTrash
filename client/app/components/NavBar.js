@@ -56,6 +56,10 @@ export default class NavBar extends React.Component {
                                     Generic
                                 </DropdownItem>
                                 <DropdownItem divider />
+                                <DropdownItem onClick={computeRouteForBins.bind(null, 'full')}>
+                                    Full
+                                </DropdownItem>
+                                <DropdownItem divider />
                                 <DropdownItem onClick={computeRouteForBins.bind(null, 'all')}>
                                     All
                                 </DropdownItem>

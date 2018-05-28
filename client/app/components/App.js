@@ -15,7 +15,8 @@ export default class App extends React.Component {
         this.state = {
             loading: true,
             bins: [],
-            route: null
+            route: null,
+            routeBins: null
         };
     }
 
@@ -57,8 +58,13 @@ export default class App extends React.Component {
             return;
         }
 
-        // Filter the bins based on their type
-        if (type !== 'all') {
+        // Filter the bins
+        if (type === 'full') { 
+            bins = bins.filter(bin => {
+                const level = (bin.height - (bin.lastMeasurement ? bin.lastMeasurement.value : bin.height)) / bin.height;
+                return level >= 0.8;
+            });
+        } else if (type !== 'all') {
             bins = bins.filter(b => b.type === type);
         }
 
@@ -79,16 +85,16 @@ export default class App extends React.Component {
             waypoints
         }, (res, status) => {
             if (status === 'OK') {
-                this.setState({ loading: false, route: res });
+                this.setState({ loading: false, route: res, routeBins: bins });
             } else {
-                this.setState({ loading: false, route: null });
+                this.setState({ loading: false, route: null, routeBins: bins });
             }
         });
 
     }
 
     render() {
-        const { loading, bins, route } = this.state;
+        const { loading, bins, route, routeBins } = this.state;
 
         const contents = (
             <div style={{ width: '100%', height: '100%' }}>
@@ -103,7 +109,7 @@ export default class App extends React.Component {
                     {/* Side panel for route info */}
                     {route && (
                         <div style={{ width: '100%', height: '100%', overflow: 'auto', padding: '5px 15px' }}>
-                            <RouteInfo route={route} />
+                            <RouteInfo route={route} bins={routeBins} />
                         </div>
                     )}
 
